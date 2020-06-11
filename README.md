@@ -21,6 +21,6 @@ The general flow in a node is :
 2. invoke `establishCommunication()` on your class instance
 3. invoke `publishMQTTMeasurement()` with measurement _m_
 
-See the [implementation](library/src/IoTwx.h) for more.
+See the [implementation](libraries/src/IoTwx.h) for more.
 
 
