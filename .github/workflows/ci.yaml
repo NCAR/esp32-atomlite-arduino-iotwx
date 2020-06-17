@@ -36,6 +36,7 @@ jobs:
           arduino-cli core install ${{ matrix.arduino-platform }} --verbose
 
       - name: Install Libraries
+        run: |
           arduino-cli lib update-index --verbose
           arduino-cli lib install NTPClient FastLED ArduinoJson
 
