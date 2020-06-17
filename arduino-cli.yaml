@@ -1,0 +1,4 @@
+board_manager:
+  additional_urls:
+    - https://raw.githubusercontent.com/Seeed-Studio/Seeed_Platform/master/package_seeeduino_boards_index.json
+    - https://dl.espressif.com/dl/package_esp32_index.json
