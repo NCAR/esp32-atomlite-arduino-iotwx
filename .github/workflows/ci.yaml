@@ -38,8 +38,8 @@ jobs:
       - name: Install Libraries
         run: |
           arduino-cli lib update-index --verbose
-          arduino-cli lib install NTPClient FastLED ArduinoJson
+          arduino-cli lib install NTPClient FastLED ArduinoJson --verbose
 
       - name: Compile sketch
         run: |
-          arduino-cli compile --fqbn ${{ matrix.fqbn }} "test/dummy.ino" --verbose
+          arduino-cli compile --fqbn ${{ matrix.fqbn }} "test" --verbose
