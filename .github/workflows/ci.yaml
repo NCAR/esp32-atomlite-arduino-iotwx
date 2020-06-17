@@ -42,4 +42,4 @@ jobs:
 
       - name: Compile sketch
         run: |
-          arduino-cli compile --fqbn ${{ matrix.fqbn }} "test" --verbose
+          arduino-cli compile --fqbn ${{ matrix.fqbn }} "test/dummy.ino" --verbose
