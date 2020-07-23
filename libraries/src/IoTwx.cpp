@@ -88,7 +88,9 @@ bool wait_for_bluetooth_config(const char* uuid, long last_millis, int delay_in_
     File                      file;
     StaticJsonDocument<1024>  doc;
     char                      jsonConfig[1024]  = {'/0'};
-
+    bool                      btConfig = false;
+    bool                      localConfig = false;
+    
     btSerialConnection.begin(uuid); 
     SPIFFS.begin(true);
 
@@ -111,8 +113,8 @@ bool wait_for_bluetooth_config(const char* uuid, long last_millis, int delay_in_
             file = SPIFFS.open("/config.json", FILE_WRITE);
 
             if(!file) {
-                Serial.println("[] file error");
-                return false;
+                Serial.println("[] BT config file error");
+                // return false;
             }
             else {
                 Serial.println("[] file open for writing");
@@ -134,7 +136,7 @@ bool wait_for_bluetooth_config(const char* uuid, long last_millis, int delay_in_
 
                     if (output == "null") {
                         Serial.println("[] config.json was empty: HALTING");
-                        return false;
+                        // return false;
                     } else {
                         Serial.println("[] BT config storing to NVS");
                         store_data_to_nvs("iotwx_mq_port",   (const char *)doc["iotwx_mq_port"]);
@@ -143,14 +145,42 @@ bool wait_for_bluetooth_config(const char* uuid, long last_millis, int delay_in_
                         store_data_to_nvs("iotwx_wifi_pwd",  (const char *)doc["iotwx_wifi_pwd"]);
                         store_data_to_nvs("iotwx_id",        (const char *)doc["iotwx_id"]);
                         Serial.println("[] BT config stored to NVS");
-                        return true;
+                        btConfig = true;
                     }
                 }
             }
         }
         delay(20);
     }
-    return false;
+        
+    if (!btConfig) {
+        file = SPIFFS.open("/config.json", FILE_READ);
+        if (file) {
+            deserializeJson(doc, file);
+            file.close();
+
+            String output;
+            serializeJson(doc, output);
+            Serial.println("[] reading serialized json");
+            Serial.println(output);
+                
+            if (output == "null") {
+                Serial.println("[] config.json was empty: HALTING");
+                localConfig = false;
+            } else if (doc.containsKey("iotwx_local_config")) {
+                Serial.println("[] LOCAL config storing to NVS");
+                store_data_to_nvs("iotwx_mq_port",   (const char *)doc["iotwx_mq_port"]);
+                store_data_to_nvs("iotwx_mq_ip",     (const char *)doc["iotwx_mq_ip"]);
+                store_data_to_nvs("iotwx_wifi_ssid", (const char *)doc["iotwx_wifi_ssid"]);
+                store_data_to_nvs("iotwx_wifi_pwd",  (const char *)doc["iotwx_wifi_pwd"]);
+                store_data_to_nvs("iotwx_id",        (const char *)doc["iotwx_id"]);
+                Serial.println("[] LOCAL config stored to NVS");
+                localConfig = true;
+            }        
+        }
+    }
+    
+    return localConfig || btConfig;
 }
 
 /**
@@ -261,14 +291,13 @@ IoTwx::IoTwx(bool bt_config_status) {
     Serial.println("[] reading from NVS");
     Serial.println("[] setting IoTwx data");
     
-    if (bt_config_status == true) {
-        wifi_ssid   = (const char*)read_data_from_nvs("iotwx_wifi_ssid");
-        wifi_passwd = (const char*)read_data_from_nvs("iotwx_wifi_pwd");
-        mqtt_server = (const char*)read_data_from_nvs("iotwx_mq_ip");
-        mqtt_port   = atoi((const char*)read_data_from_nvs("iotwx_mq_port"));
-        device_id   = (const char*)read_data_from_nvs("iotwx_id");
-    }
-    configured = bt_config_status;          
+    wifi_ssid   = (const char*)read_data_from_nvs("iotwx_wifi_ssid");
+    wifi_passwd = (const char*)read_data_from_nvs("iotwx_wifi_pwd");
+    mqtt_server = (const char*)read_data_from_nvs("iotwx_mq_ip");
+    mqtt_port   = atoi((const char*)read_data_from_nvs("iotwx_mq_port"));
+    device_id   = (const char*)read_data_from_nvs("iotwx_id");
+
+    configured = true;          
 }
 
 
