@@ -12,8 +12,8 @@ to include this in the library.
 
 The base class `IoTwx` implements two methods of use:
 
-* `void establishCommunication()`
-* `void publishMQTTMeasurement(const char* topic, const char* sensor, float m, long offset);`
+- `void establishCommunication()`
+- `void publishMQTTMeasurement(const char* topic, const char* sensor, float m, long offset);`
 
 The general flow in a node is :
 
@@ -21,6 +21,4 @@ The general flow in a node is :
 2. invoke `establishCommunication()` on your class instance
 3. invoke `publishMQTTMeasurement()` with measurement _m_
 
-See the [implementation](libraries/src/IoTwx.h) for more.
-
-
+See the [implementation](IoTwx.h) for more.
