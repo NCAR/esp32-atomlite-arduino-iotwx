@@ -2,13 +2,13 @@
     IoTwx.h
 
     This is the core implementation of the IoTwx
-    class which implements communication and 
+    class which implements communication and
     basic functionality for the node including
     configuration settings and indiciator lights
     or messages on the physical device.
-    
+
     Copyright (c) 2020 keith maull
-    Website    : 
+    Website    :
     Author     : kmaull
     Create Time:
     Change Log :
@@ -17,7 +17,7 @@
 #ifndef IOTWX_CONFIG_H
 #define IOTWX_CONFIG_H
 
-#include <FastLED.h>        
+#include <FastLED.h>
 
 #define NUM_LEDS  1
 #define NEO_PIN   27
@@ -40,17 +40,17 @@ class IoTwx {
     int         mqtt_port;
     int         timezone;
     bool        configured = false;
-    
+
     public:
         IoTwx();
         IoTwx(bool flag);
-        IoTwx(const char* dev_id, const char* ssid, const char* pwd, 
+        IoTwx(const char* dev_id, const char* ssid, const char* pwd,
               const char* mqtt_ip, int mqtt_port, int timezone);
         void
-            establishCommunications(); 
+            establishCommunications();
         void
             publishMQTTMeasurement(const char* topic, const char* sensor, float m, long offset);
-        bool 
+        bool
             isConfigured() { return configured; }
 };
 
