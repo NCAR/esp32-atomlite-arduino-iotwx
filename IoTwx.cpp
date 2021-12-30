@@ -19,7 +19,7 @@
 #include "nvs.h"
 #include "BluetoothSerial.h" // Serial Bluetooth; see tutorial on: www.circuitdigest.com
 #include "SPIFFS.h"
-#include <NTPClient.h>      /// https://github.com/arduino-libraries/NTPClient
+#include "time.h"
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <MQTT.h>           /// https://github.com/256dpi/arduino-mqtt
@@ -30,8 +30,8 @@ MQTTClient       mqttClient;
 WiFiUDP          ntpUDP;
 WiFiClient       networkClient;
 BluetoothSerial  btSerialConnection;
-NTPClient        timeClient(ntpUDP);
-unsigned long    t;
+// NTPClient        timeClient(ntpUDP);
+// unsigned long    t;
 typedef uint32_t nvs_handle_t;
 unsigned long    retry_count    = 0;
 CRGB             leds[NUM_LEDS] = {LED_BLACK}; // Define the array of leds
@@ -328,17 +328,24 @@ IoTwx::IoTwx(const char* dev_id, const char* ssid,
  *
  */
 void IoTwx::publishMQTTMeasurement(const char* topic, const char* sensor, float m, long offset) {
-  char data[128] = {0};
-
-  t = timeClient.getEpochTime(); // sec since 1970
-
+  char data[127] = {0};
+  time_t t;
+  struct tm timeinfo;  
+  
+  while(!getLocalTime(&timeinfo)){
+    Serial.println("[warn]:  Failed to obtain time");
+  } 
+  
+  time(&t);
+  
   Serial.print("[info]: publishing = ");
 
   sprintf(data,
-    "device: %s\nsensor: %s\nm: %f\nt: %d\n",
-     device_id, sensor, m, t - offset);
+    "device: %s\nsensor: %s\nm: %f\nt: %lu\n",
+     device_id, sensor, m, t); 
 
-  Serial.print(data);
+  Serial.println(data);
+  
   mqttClient.publish(topic, data);
   delay(750);
 }
@@ -381,15 +388,8 @@ void IoTwx::establishCommunications() {
     }
   }
 
-  // start NTP client for clock and time
-  timeClient.begin();
-  timeClient.setTimeOffset(timezone);
-
-  while(!timeClient.update()) {
-    timeClient.forceUpdate();
-    Serial.println("[info]: updating time client");
-    delay(2000);
-  }
+  // configure time client for network time on mesurement submit
+  configTime(timezone, 0, "pool.ntp.org");
 
   Serial.println("\n[info]: connection sequence done connecting!");
 
