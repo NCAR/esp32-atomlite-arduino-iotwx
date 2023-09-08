@@ -284,10 +284,7 @@ bool store_data_to_nvs(char* key, const char* v) {
 }
 
 
-IoTwx::IoTwx() {/* empty constructor */}
-
-
-IoTwx::IoTwx(bool bt_config_status) {
+IoTwx::IoTwx() {
     Serial.println("[] reading from NVS");
     Serial.println("[] setting IoTwx data");
 
