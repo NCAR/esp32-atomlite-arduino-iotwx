@@ -24,13 +24,18 @@
 #include <WiFiUdp.h>
 #include <MQTT.h>           /// https://github.com/256dpi/arduino-mqtt
 #include <ArduinoJson.h>
-
+#include <SPI.h>
+#include <M5_Ethernet.h>
+#include <NTPClient.h>
 
 MQTTClient       mqttClient;
 WiFiUDP          ntpUDP;
+EthernetUDP      ntpEthernetUDP;
 WiFiClient       networkClient;
+EthernetClient   networkClientPOE;
 BluetoothSerial  btSerialConnection;
-// NTPClient        timeClient(ntpUDP);
+NTPClient        ethTimeClient(ntpEthernetUDP, "pool.ntp.org");
+
 // unsigned long    t;
 typedef uint32_t nvs_handle_t;
 unsigned long    retry_count    = 0;
@@ -195,7 +200,7 @@ bool wait_for_bluetooth_config(const char* uuid, long last_millis, int delay_in_
  */
 char* read_data_from_nvs(char* key) {
   Serial.print("\n");
-  Serial.print("Opening Non-Volatile Storage (NVS) handle... ");
+  Serial.print("[info]: Opening Non-Volatile Storage (NVS) handle... \n");
 
   esp_err_t    err = nvs_flash_init();
   size_t       required_size;
@@ -205,27 +210,27 @@ char* read_data_from_nvs(char* key) {
   err = nvs_open("storage", NVS_READWRITE, &n_handle);
 
   if (err != ESP_OK) {
-      Serial.print("Error opening NVS handle: "); Serial.print(esp_err_to_name(err));
+      Serial.print("[error]: Error opening NVS handle: "); Serial.print(esp_err_to_name(err));
       Serial.print("\n");
 
       return nullptr;
   } else {
-      Serial.print("Done");
-      Serial.print("Reading data from NVS ... ");
+      Serial.print("[info]: NVS open ... Done\n");
+      Serial.print("[info]: Reading data from NVS ... \n");
 
       if (nvs_get_str(n_handle, key, NULL, &required_size) == ESP_OK) {
         char* val = (char *)malloc(required_size);
 
         switch (nvs_get_str(n_handle, key, val, &required_size)) {
             case ESP_OK:
-                Serial.print("Done\n");
-                Serial.print("key"); Serial.print(" = "); Serial.print(val);
+                Serial.print("[info]: NVS read ... Done\n");
+                Serial.print("[info]: NVS {key:"); Serial.print(key); Serial.print(" = "); Serial.print(val); Serial.print("}\n");
                 break;
             case ESP_ERR_NVS_NOT_FOUND:
-                Serial.print("The value is not initialized yet!\n");
+                Serial.print("[warn]: NVS The value is not initialized yet!\n");
                 break;
             default :
-                Serial.print("Error reading: ");Serial.print(esp_err_to_name(err));
+                Serial.print("[error]: NVS Error reading: ");Serial.print(esp_err_to_name(err));
                 Serial.println();
         }
         return val;
@@ -257,21 +262,21 @@ bool store_data_to_nvs(char* key, const char* v) {
     ESP_ERROR_CHECK( err );
 
     Serial.print("\n");
-    Serial.print("Opening Non-Volatile Storage (NVS) handle... ");
+    Serial.print("[info]: Opening Non-Volatile Storage (NVS) handle... ");
 
     err = nvs_open("storage", NVS_READWRITE, &n_handle);
 
     if (err != ESP_OK) {
-        Serial.print("Error opening NVS handle:"); Serial.print(esp_err_to_name(err));
+        Serial.print("[error]: Error opening NVS handle:"); Serial.print(esp_err_to_name(err));
         return false;
     } else {
-        Serial.print("Done\n");
+        Serial.print("[info]: NVS Done\n");
 
         err = nvs_set_str(n_handle, key, v);
         Serial.print((err != ESP_OK) ? "Failed!\n" : "Done\n");
 
         // After setting any values, nvs_commit() must be called!
-        Serial.println("Committing updates in NVS ... ");
+        Serial.println("[info]: Committing updates in NVS ... ");
         err = nvs_commit(n_handle);
         Serial.print((err != ESP_OK) ? "Failed!\n" : "Done\n");
 
@@ -296,6 +301,7 @@ IoTwx::IoTwx(bool bt_config_status) {
     mqtt_server = (const char*)read_data_from_nvs("iotwx_mq_ip");
     mqtt_port   = atoi((const char*)read_data_from_nvs("iotwx_mq_port"));
     device_id   = (const char*)read_data_from_nvs("iotwx_id");
+    // poe_mac     = (byte [])read_data_from_nvs("iotwx_poe_mac");
 
     configured = true;
 }
@@ -307,7 +313,8 @@ IoTwx::IoTwx(const char* dev_id, const char* ssid,
     wifi_ssid = ssid;
     wifi_passwd = pwd;
     mqtt_server = mqtt_ip;
-    mqtt_port = mqtt_p;
+    mqtt_port = mqtt_p;    device_id   = (const char*)read_data_from_nvs("iotwx_id");
+
     device_id = dev_id;
     timezone = tz;
 }
@@ -328,53 +335,121 @@ IoTwx::IoTwx(const char* dev_id, const char* ssid,
  *
  */
 void IoTwx::publishMQTTMeasurement(const char* topic, const char* sensor, float m, long offset) {
-  char data[127] = {0};
-  time_t t;
-  struct tm timeinfo;  
-  
-  while(!getLocalTime(&timeinfo)){
-    Serial.println("[warn]:  Failed to obtain time");
-  } 
-  
-  time(&t);
-  
-  Serial.print("[info]: publishing = ");
+    char data[127] = {0};
+    time_t t;
+    struct tm timeinfo;  
 
-  sprintf(data,
-    "device: %s\nsensor: %s\nm: %f\nt: %lu\n",
-     device_id, sensor, m, t); 
-
-  Serial.println(data);
   
-  mqttClient.publish(topic, data);
-  delay(750);
+    if (!wifi_conn)
+    {
+        // Switch to Ethernet UDP for NTP if WiFi lost
+        ethTimeClient.update();
+        Serial.println(ethTimeClient.getFormattedTime());
+        t = ethTimeClient.getEpochTime();
+        Serial.println(t);
+    } else {
+        retry_count = 0;
+        while(!getLocalTime(&timeinfo) && retry_count < 10){
+            Serial.println("[warn]:  Failed to obtain time");
+            retry_count++;
+        } 
+        // time could possible not be set -- set it to internal runtime
+        time(&t);
+    }
+
+    Serial.print("\n[info]: publishing mqtt payload = \n");
+
+    sprintf(data,
+            "device: %s\nsensor: %s\nm: %f\nt: %lu\n",
+            device_id, sensor, m, t); 
+
+    Serial.println(data);
+
+    mqttClient.publish(topic, data);
+    delay(750);
 }
 
 
 void IoTwx::establishCommunications() {
-  // connect to WiFi
-  retry_count = 0;
-  WiFi.begin(wifi_ssid, wifi_passwd);
-  Serial.print("[info]: checking wifi..."); Serial.print(wifi_ssid); Serial.print(wifi_passwd);
+  IPAddress local_ip;
+  bool timeSetFlag = false;
+  
+  if (wifi_conn) { // WLAN
+    // connect to WiFi
+    retry_count = 0;
+    WiFi.begin(wifi_ssid, wifi_passwd);
+    Serial.print("[info]: checking wifi... ("); Serial.print(wifi_ssid); Serial.print(wifi_passwd); Serial.println(")");
 
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
-    blink_led(LED_WIFI, LED_MED);
-    delay(7500);
+    while (WiFi.status() != WL_CONNECTED) {
+        Serial.print(".");
+        blink_led(LED_WIFI, LED_MED);
+        delay(7500);
 
-    retry_count++;
-    if (retry_count > 10) {
-      blink_led(LED_FAIL, LED_MED); blink_led(LED_WARN, LED_MED); blink_led(LED_OK, LED_MED);
-      delay(30000);
-      esp_restart();
+        retry_count++;
+
+        if (retry_count > 10) {
+            blink_led(LED_FAIL, LED_MED); blink_led(LED_WARN, LED_MED); blink_led(LED_OK, LED_MED);
+            delay(10000);
+            esp_restart();
+        }
     }
+    Serial.println("\n[info]: wifi connection SUCCESS");
+
+    mqttClient.begin(mqtt_server, mqtt_port, networkClient);
+
+    // configure time client for network time on mesurement submit
+    configTime(timezone, 0, "pool.ntp.org");    
+    timeSetFlag = true;
   }
+  else { // LAN/POE
+    Serial.print("[info]: checking LAN ... ("); Serial.print(getPoEMACStr()); Serial.println(")");
+
+
+    delay(2500);
+
+    // byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+    SPI.begin(SCK, MISO, MOSI, -1);
+    Ethernet.init(CS);
+    Ethernet.begin(getPoEMAC());
+
+    retry_count = 0;
+    do {
+        delay(2500);
+        local_ip = Ethernet.localIP();
+        retry_count++;
+    } while(local_ip == IPAddress(0,0,0,0) && retry_count < 5);
+
+    // if (local_ip == IPAddress(0,0,0,0)) {
+    //     Serial.println("[warn]: LAN/POE IP address: "); 
+    //     Serial.println(local_ip);
+    //     Serial.println("[warn]: connection sequence FAIL ");
+    //     Serial.println("[warn]: NTP time not set\n[info]: returning out of INCOMPLETE connection sequence ");
+    //     blink_led(LED_FAIL, LED_MED);
+    //     delay(2000);
+
+    //     return;
+    // } else {
+
+    Serial.print("[info]: LAN/POE IP address: ");
+    Serial.println(local_ip);
+
+    mqttClient.begin(mqtt_server, mqtt_port, networkClientPOE);
+
+    ethTimeClient.begin();
+    ethTimeClient.forceUpdate();
+    timeSetFlag = ethTimeClient.isTimeSet();
+
+    Serial.println("\n[info]: connection sequence COMPLETED");
+    
+  }
+
+  Serial.print("\n[info]: NTP time is set (");  Serial.print(timeSetFlag); Serial.println(")");
 
   // connect to MQTT
   retry_count = 0;
-  mqttClient.begin(mqtt_server, mqtt_port, networkClient);
-  Serial.print("\n[info]: MQTT connecting...");
-  Serial.print(mqtt_server); Serial.print(mqtt_port);
+  Serial.print("\n[info]: MQTT connecting (");
+  Serial.print(mqtt_server); Serial.print(":"); Serial.print(mqtt_port); Serial.print(")");
+
   while (!mqttClient.connect("esp32", "", "")) {
     Serial.print(".");
     blink_led(LED_MQTT, LED_MED);
@@ -388,10 +463,6 @@ void IoTwx::establishCommunications() {
     }
   }
 
-  // configure time client for network time on mesurement submit
-  configTime(timezone, 0, "pool.ntp.org");
-
-  Serial.println("\n[info]: connection sequence done connecting!");
-
+  Serial.println();
   blink_led(LED_OK, LED_SLOW);
 }

@@ -32,14 +32,22 @@
 #define LED_MED   3
 #define LED_FAST  5
 
+// FOR POE IMPLEMENTATION 
+#define SCK  22
+#define MISO 23
+#define MOSI 33
+#define CS   19
+
+
 class IoTwx {
-    const char* device_id;
-    const char* wifi_ssid;
-    const char* wifi_passwd;
-    const char* mqtt_server;
-    int         mqtt_port;
-    int         timezone;
-    bool        configured = false;
+    const char*  device_id;
+    const char*  wifi_ssid;
+    const char*  wifi_passwd;
+    const char*  mqtt_server;
+    int          mqtt_port;
+    int          timezone;
+    bool         configured = false;
+    bool         wifi_conn = true;  // default is wifi
 
     public:
         IoTwx();
@@ -52,6 +60,27 @@ class IoTwx {
             publishMQTTMeasurement(const char* topic, const char* sensor, float m, long offset);
         bool
             isConfigured() { return configured; }
+        void 
+            setWifi(bool is_wifi) { wifi_conn = is_wifi; }
+        void 
+            setPoEMAC(byte *mac) {
+                for (int i=0; i < 6; i++) {   // is ther a byte copy???
+                    poe_mac[i] = mac[i]; 
+                }
+                Serial.println("[info]: PoE is set");
+            };//poe_mac = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED}; } // TODO : FIX
+        byte
+            *getPoEMAC() { return  poe_mac; }; //{0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED}; } // TODO: FIX
+        char 
+            *getPoEMACStr() {
+                char mac_str[12];
+                for(int i=0, j=0; i<6; i++, j+=2){
+                    sprintf(*(&mac_str+j), "%02X", poe_mac[i]);
+                }
+                Serial.print("[info]: getPoEMacStr(): "); Serial.println(mac_str);
+                return mac_str;
+            }
+    byte   poe_mac[6]; //= {0x02,0xAD,0x74,0x7B,0xED,0x2A};
 };
 
 char* read_data_from_nvs (char* key);
