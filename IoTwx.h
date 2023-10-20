@@ -51,7 +51,6 @@ class IoTwx {
 
     public:
         IoTwx();
-        IoTwx(bool flag);
         IoTwx(const char* dev_id, const char* ssid, const char* pwd,
               const char* mqtt_ip, int mqtt_port, int timezone);
         void
