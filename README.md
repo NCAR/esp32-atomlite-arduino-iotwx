@@ -1,6 +1,6 @@
 # IoTwx Core
 
-This is the Arduino implementation of the IoTwx core library used by all nodes.  It is optimized for M5Stack Atom Lite, but would likely work on any ESP32 chipset.
+This is the Arduino implementation of the IoTwx core library used by all nodes. It is optimized for M5Stack Atom Lite, but would likely work on any ESP32 chipset.
 
 Use:
 
@@ -27,6 +27,6 @@ See the [implementation](IoTwx.h) for more.
 
 The library is used in the following code bases:
 
-* ESP32 IoTwx Atmos Node [https://github.com/NCAR/esp32-atomlite-arduino-atmos-node](https://github.com/NCAR/esp32-atomlite-arduino-atmos-node)
-* ESP32 IoTwx Hydro Node [https://github.com/NCAR/esp32-atomlite-arduino-hydro-node](https://github.com/NCAR/esp32-atomlite-arduino-hydro-node)
-* ESP32 IoTwx Aero Node [https://github.com/NCAR/esp32-atomlite-arduino-aero-node](https://github.com/NCAR/esp32-atomlite-arduino-aero-node)
+- ESP32 IoTwx Atmos Node [https://github.com/NCAR/esp32-atomlite-arduino-atmos-node](https://github.com/NCAR/esp32-atomlite-arduino-atmos-node)
+- ESP32 IoTwx Hydro Node [https://github.com/NCAR/esp32-atomlite-arduino-hydro-node](https://github.com/NCAR/esp32-atomlite-arduino-hydro-node)
+- ESP32 IoTwx Aero Node [https://github.com/NCAR/esp32-atomlite-arduino-aero-node](https://github.com/NCAR/esp32-atomlite-arduino-aero-node)
