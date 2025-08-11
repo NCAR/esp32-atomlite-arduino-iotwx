@@ -337,9 +337,9 @@ IoTwx::IoTwx(const char* dev_id, const char* ssid,
 void IoTwx::publishMQTTMeasurement(const char* topic, const char* sensor, float m, long offset) {
     char data[127] = {0};
     time_t t;
-    struct tm timeinfo;  
+    struct tm timeinfo;
 
-  
+
     if (!wifi_conn)
     {
         // Switch to Ethernet UDP for NTP if WiFi lost
@@ -352,7 +352,7 @@ void IoTwx::publishMQTTMeasurement(const char* topic, const char* sensor, float 
         while(!getLocalTime(&timeinfo) && retry_count < 10){
             Serial.println("[warn]:  Failed to obtain time");
             retry_count++;
-        } 
+        }
         // time could possible not be set -- set it to internal runtime
         time(&t);
     }
@@ -361,7 +361,7 @@ void IoTwx::publishMQTTMeasurement(const char* topic, const char* sensor, float 
 
     sprintf(data,
             "device: %s\nsensor: %s\nm: %f\nt: %lu\n",
-            device_id, sensor, m, t); 
+            device_id, sensor, m, t);
 
     Serial.println(data);
 
@@ -373,7 +373,7 @@ void IoTwx::publishMQTTMeasurement(const char* topic, const char* sensor, float 
 void IoTwx::establishCommunications() {
   IPAddress local_ip;
   bool timeSetFlag = false;
-  
+
   if (wifi_conn) { // WLAN
     // connect to WiFi
     retry_count = 0;
@@ -398,7 +398,7 @@ void IoTwx::establishCommunications() {
     mqttClient.begin(mqtt_server, mqtt_port, networkClient);
 
     // configure time client for network time on mesurement submit
-    configTime(timezone, 0, "pool.ntp.org");    
+    configTime(timezone, 0, "pool.ntp.org");
     timeSetFlag = true;
   }
   else { // LAN/POE
@@ -420,7 +420,7 @@ void IoTwx::establishCommunications() {
     } while(local_ip == IPAddress(0,0,0,0) && retry_count < 5);
 
     // if (local_ip == IPAddress(0,0,0,0)) {
-    //     Serial.println("[warn]: LAN/POE IP address: "); 
+    //     Serial.println("[warn]: LAN/POE IP address: ");
     //     Serial.println(local_ip);
     //     Serial.println("[warn]: connection sequence FAIL ");
     //     Serial.println("[warn]: NTP time not set\n[info]: returning out of INCOMPLETE connection sequence ");
@@ -440,7 +440,7 @@ void IoTwx::establishCommunications() {
     timeSetFlag = ethTimeClient.isTimeSet();
 
     Serial.println("\n[info]: connection sequence COMPLETED");
-    
+
   }
 
   Serial.print("\n[info]: NTP time is set (");  Serial.print(timeSetFlag); Serial.println(")");
