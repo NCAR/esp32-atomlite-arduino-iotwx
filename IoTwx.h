@@ -57,6 +57,8 @@ class IoTwx {
         void
             establishCommunications();
         void
+            disconnectMQTT();
+        void
             publishMQTTMeasurement(const char* topic, const char* sensor, float m, long offset);
         bool
             isConfigured() { return configured; }

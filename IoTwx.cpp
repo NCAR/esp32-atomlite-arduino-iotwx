@@ -92,7 +92,7 @@ bool wait_for_bluetooth_config(const char* uuid, long last_millis, int delay_in_
 {
     File                      file;
     StaticJsonDocument<1024>  doc;
-    char                      jsonConfig[1024]  = {'/0'};
+    char                      jsonConfig[1024] = {'\0'};
     bool                      btConfig = false;
     bool                      localConfig = false;
 
@@ -365,7 +365,10 @@ void IoTwx::publishMQTTMeasurement(const char* topic, const char* sensor, float 
 
     Serial.println(data);
 
-    mqttClient.publish(topic, data);
+    bool published = mqttClient.publish(topic, data);
+    if (!published) {
+        Serial.println("[error]: MQTT publish FAILED");
+    }
     delay(750);
 }
 
@@ -398,8 +401,17 @@ void IoTwx::establishCommunications() {
     mqttClient.begin(mqtt_server, mqtt_port, networkClient);
 
     // configure time client for network time on mesurement submit
-    configTime(timezone, 0, "pool.ntp.org");    
-    timeSetFlag = true;
+    configTime(timezone, 0, "pool.ntp.org");
+
+    struct tm timeinfo;
+    int ntp_retry = 0;
+    timeSetFlag = false;
+    while (!getLocalTime(&timeinfo) && ntp_retry < 10) {
+        Serial.println("[warn]: waiting for NTP sync...");
+        delay(500);
+        ntp_retry++;
+    }
+    timeSetFlag = getLocalTime(&timeinfo);
   }
   else { // LAN/POE
     Serial.print("[info]: checking LAN ... ("); Serial.print(getPoEMACStr()); Serial.println(")");
@@ -450,7 +462,7 @@ void IoTwx::establishCommunications() {
   Serial.print("\n[info]: MQTT connecting (");
   Serial.print(mqtt_server); Serial.print(":"); Serial.print(mqtt_port); Serial.print(")");
 
-  while (!mqttClient.connect("esp32", "", "")) {
+  while (!mqttClient.connect(device_id, "", "")) {
     Serial.print(".");
     blink_led(LED_MQTT, LED_MED);
     delay(5000);
@@ -465,4 +477,12 @@ void IoTwx::establishCommunications() {
 
   Serial.println();
   blink_led(LED_OK, LED_SLOW);
+}
+
+
+void IoTwx::disconnectMQTT() {
+  if (mqttClient.connected()) {
+    mqttClient.disconnect();
+    Serial.println("[info]: MQTT cleanly disconnected");
+  }
 }
