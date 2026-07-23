@@ -92,7 +92,7 @@ bool wait_for_bluetooth_config(const char* uuid, long last_millis, int delay_in_
 {
     File                      file;
     StaticJsonDocument<1024>  doc;
-    char                      jsonConfig[1024]  = {'/0'};
+    char                      jsonConfig[1024]  = {0};
     bool                      btConfig = false;
     bool                      localConfig = false;
 
