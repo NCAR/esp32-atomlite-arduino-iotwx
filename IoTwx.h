@@ -32,7 +32,7 @@
 #define LED_MED   3
 #define LED_FAST  5
 
-// FOR POE IMPLEMENTATION 
+// FOR POE IMPLEMENTATION
 #define SCK  22
 #define MISO 23
 #define MOSI 33
@@ -60,18 +60,18 @@ class IoTwx {
             publishMQTTMeasurement(const char* topic, const char* sensor, float m, long offset);
         bool
             isConfigured() { return configured; }
-        void 
+        void
             setWifi(bool is_wifi) { wifi_conn = is_wifi; }
-        void 
+        void
             setPoEMAC(byte *mac) {
                 for (int i=0; i < 6; i++) {   // is ther a byte copy???
-                    poe_mac[i] = mac[i]; 
+                    poe_mac[i] = mac[i];
                 }
                 Serial.println("[info]: PoE is set");
             };//poe_mac = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED}; } // TODO : FIX
         byte
             *getPoEMAC() { return  poe_mac; }; //{0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED}; } // TODO: FIX
-        char 
+        char
             *getPoEMACStr() {
                 char mac_str[12];
                 for(int i=0, j=0; i<6; i++, j+=2){
